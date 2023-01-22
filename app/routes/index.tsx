@@ -39,7 +39,7 @@ export default function Index() {
       </div>
 
       <div className="mt-32 grid grid-cols-12 gap-4 w-full">
-        <div className="col-span-12">
+        <div className="col-span-12 flex justify-center">
           <MathProblem data={data} />
         </div>
       </div>
