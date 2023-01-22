@@ -3,9 +3,10 @@ import type { MathProblem, MathProblems } from '~/types/MathTypes'
 import { useFetcher } from '@remix-run/react'
 import classnames from 'classnames'
 
-// hidden input for the answer
-// display the answer in a div
-// animate the display element
+// ✅ hidden input for the answer
+// ✅ display the answer in a div
+// animate the positive/negative feedback element
+// animate change of number
 
 function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
   const fetcher = useFetcher()
@@ -66,7 +67,7 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
     if (!isNaN(num)) {
       const maxStrLen =
         typeof problemData?.answer === 'number'
-          ? problemData?.answer.toString().length * 2
+          ? problemData?.answer.toString().length + 1
           : Infinity
       const handleStrOverflow = val.length > maxStrLen
 
@@ -106,6 +107,8 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
       setProblemsCache([...problemsCache, ...fetcher.data.mathProblems])
     }
   }, [problemsCache, fetcher.type, fetcher.data])
+
+  console.log('problemsCache length', problemsCache.length)
 
   return (
     <div className="flex w-1/4 flex-col text-[128px] xl:text-[180px]">
