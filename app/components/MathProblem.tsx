@@ -12,6 +12,13 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
   const fetcher = useFetcher()
 
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const answerAnimationRef = React.useRef<HTMLSpanElement>(null)
+  const cursorRef = React.useRef<HTMLSpanElement>(null)
+
+  // Animation Properties
+  const [cursorWidth, setCursorWidth] = React.useState<number | undefined>()
+
+  // App State
   const [problemsCache, setProblemsCache] = React.useState<MathProblems>(
     data.mathProblems
   )
@@ -32,23 +39,40 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
     return problem.answer === answer
   }
 
-  function animateAnswer() {
-    if (inputRef.current) {
-      inputRef.current.classList.add('animate-pulse')
+  function animateAnswer(
+    currAnswer: string | number,
+    type: 'positive' | 'negative'
+  ) {
+    const answerEl = answerAnimationRef.current
+    const cursorEl = cursorRef.current
+    if (!answerEl || !cursorEl) return
+
+    // if we are starting the animation, create a clone of the el in place of the original
+    answerEl.style.visibility = 'visible'
+    answerEl.style.right = `${cursorEl.offsetWidth}px`
+    answerEl.textContent =
+      typeof currAnswer === 'number' ? currAnswer.toString() : currAnswer
+
+    if (type === 'positive') {
+      // positive animation, rocket off out of control
       setTimeout(() => {
-        inputRef.current?.classList.remove('animate-pulse')
+        answerEl.style.transform = 'scale(1.5)'
       }, 500)
+    } else {
+      setTimeout(() => {
+        answerEl.style.transform = 'scale(1.5)'
+      }, 500)
+      // do negative animation, drop dead
     }
+    console.log('answerEl', answerEl)
   }
 
   function submitAnswer(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    console.log('validate')
     if (problemData && validateMathProblem(problemData, answer)) {
-      console.log('validated')
       setAnswer('')
-      animateAnswer()
+      animateAnswer(answer, 'positive')
       const problems = problemsCache
       setProblemsCache(problems)
       setProblem(problems.pop())
@@ -57,7 +81,8 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
         fetcher.load('/math')
       }
     } else {
-      // display negative feedback
+      setAnswer('')
+      animateAnswer(answer, 'negative')
     }
   }
 
@@ -119,11 +144,14 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
       </div>
       <hr className="h-[5px] w-full bg-black transition-all" />
       <div
-        className=" w-full text-right"
+        className=" relative w-full text-right"
         onClick={e => onAnswerDisplayClick(e)}
       >
-        {answer}
-        <span className={classnames('cursor mb-[1.5rem]')}>|</span>
+        <span className="absolute top-0" ref={answerAnimationRef}></span>
+        <span>{answer}</span>
+        <span ref={cursorRef} className={classnames('cursor mb-[1.5rem]')}>
+          |
+        </span>
       </div>
       <form onSubmit={e => submitAnswer(e)} className="absolute top-[-999px]">
         <input
