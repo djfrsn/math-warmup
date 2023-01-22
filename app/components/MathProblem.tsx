@@ -1,76 +1,33 @@
-import React from "react"
-
-// Features
-
-// Cache the problems
-// 1. Generate problems on the server and store 10 problems ahead of time
-
-// Positive/negative feedback
-// 1. If the answer is correct, then the solution is displayed for n seconds in green, then the next problem is displayed
-// 2. If the answer is incorrect, then the solution is cleared, the input shakes and turns red in color
-
-// Multiple modes
-// 1. challenge mode - the problem gets more difficult as the user gets more correct answers
-// 2. practice mode - the problem is always the same and you can adjust the difficulty
-
-// Leaderboards
-// 1. challenge mode - the user can see their score and the top 100 scores
-// 2. practice mode - the user can see their score and the top 100 scores for each difficulty
-
-// Heat meter
-// 1. show how many problems you've solved in a row without making a mistake
-// 2. the faster you solve problems, the more intense the heat meter gets...show some sort of animation to convey intensity
+import React, { useEffect } from "react"
+import type { MathProblem, MathProblems } from "~/types/MathTypes";
+import { useFetcher } from "@remix-run/react";
 
 
-function getRandomMathProblem(): any {
-  const operations = ['+', '-', '*', '/']
-  const operation = operations[Math.floor(Math.random() * operations.length)]
-  const num1 = Math.floor(Math.random() * 100)
-  const num2 = Math.ceil(Math.random() * 10)
+function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
+  const fetcher = useFetcher();
 
-  // if the operation is division, then make sure the answer is a whole number
-  if (operation === '/') {
-    const solution = num1 / num2
-    if (solution % 1 !== 0) {
-      return getRandomMathProblem()
-    }
-  }
-
-  if (num1 === num2 && operation === '/') return getRandomMathProblem()
-
-  if (num1 === num2 && operation === '-') return getRandomMathProblem()
-
-  if (num2>num1 && operation === '-') return getRandomMathProblem()
-
-  return `${num1} ${operation} ${num2}`
-}
-
-function validateMathProblem(problem: string, answer: number | string) {
-  let _answer = answer
-  if (typeof _answer === 'string') _answer = parseInt(_answer)
-
-  const [num1, operation, num2] = problem.split(' ')
-  const solution = eval(`${num1} ${operation} ${num2}`)
-
-  return solution === answer
-}
-
-function MathProblem() {
-  // everytime the problem is solve, produce another problem, randomize between division, multiplication, addition, subtraction
-  // if the problem is solved, then the solution is displayed for n seconds in green, then the next problem is displayed
-  // if the problem is not solved, then the solution is displayed in red, then the answer returns to the previous color
-  const [problem, setProblem] = React.useState(getRandomMathProblem())
+  const [problemsCache, setProblemsCache] = React.useState<MathProblems>(data.mathProblems)
+  const [problemData, setProblem] = React.useState<MathProblem | undefined>(undefined)
   const [answer, setAnswer] = React.useState<string | number>("")
 
+  function validateMathProblem(problem: MathProblem, answer: number | string) {
+    return problem.answer === answer
+  }
+
   function submitAnswer(e: React.FormEvent<HTMLFormElement>) {
-    // validate answer
     e.preventDefault()
 
     console.log('validate')
-    if (validateMathProblem(problem, answer)) {
+    if (problemData && validateMathProblem(problemData, answer)) {
       console.log('validated')
       setAnswer('')
-      setProblem(getRandomMathProblem())
+      const problems = problemsCache
+      setProblemsCache(problems)
+      setProblem(problems.pop())
+
+      if (problems.length < 4) {
+        fetcher.load('/math')
+      }
     }
   }
 
@@ -84,9 +41,31 @@ function MathProblem() {
     }
   }
 
+  useEffect(() => {
+    if (!problemData && problemsCache.length === 10) {
+      const problems = problemsCache
+      const currProblem = problems.pop()
+      setProblemsCache(problems)
+      setProblem(currProblem)
+     }
+
+  }, [problemData, problemsCache])
+
+  useEffect(() => {
+    // if the fetch is done and the recently loaded problems are different than the current data
+    if (fetcher.type === 'done' && fetcher.data.mathProblems[fetcher.data.mathProblems.length - 1] !== problemsCache[problemsCache.length - 1]) {
+      setProblemsCache([...problemsCache, ...fetcher.data.mathProblems])
+    }
+  }, [problemsCache, fetcher.type, fetcher.data])
+
+  console.log('problemsCache', problemsCache)
+  console.log('data', data)
+  console.log('fetcher.state', fetcher.state)
+  console.log('fetcher.data', fetcher.data)
+
   return (
     <div className="grid grid-cols-7 gap-2">
-      <div className="col-span-3 text-5xl">{problem}</div>
+      <div className="col-span-3 text-5xl">{problemData?.problem.str}</div>
       <div className="col-span-1 text-4xl">=</div>
       <form onSubmit={(e) => submitAnswer(e)}>
         <input className="col-span-3 p-2 rounded text-5xl" type="text" value={answer} onChange={(e) => _setAnswer(e.target.value)} />
@@ -96,4 +75,4 @@ function MathProblem() {
 }
 
 
-export default MathProblem
+export default MathProblemUI
