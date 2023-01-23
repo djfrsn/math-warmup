@@ -1,8 +1,13 @@
 import React, { useEffect } from 'react'
-import type { MathProblem, MathProblems } from '~/types/MathTypes'
 import { useFetcher } from '@remix-run/react'
 import classnames from 'classnames'
 
+import type {
+  CursorWidth,
+  MathProblem,
+  MathProblems,
+} from '~/types/MathProblemTypes'
+import { animateAnswer } from '~/utils/animations'
 // ✅ hidden input for the answer
 // ✅ display the answer in a div
 // animate the positive/negative feedback element
@@ -12,19 +17,18 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
   const fetcher = useFetcher()
 
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const answerRef = React.useRef<HTMLSpanElement>(null)
   const answerAnimationRef = React.useRef<HTMLSpanElement>(null)
   const cursorRef = React.useRef<HTMLSpanElement>(null)
 
   // Animation Properties
-  const [cursorWidth, setCursorWidth] = React.useState<number | undefined>()
+  const [cursorWidth, setCursorWidth] = React.useState<CursorWidth>()
 
   // App State
   const [problemsCache, setProblemsCache] = React.useState<MathProblems>(
     data.mathProblems
   )
-  const [problemData, setProblem] = React.useState<MathProblem | undefined>(
-    undefined
-  )
+  const [problemData, setProblem] = React.useState<MathProblem | undefined>()
   const [answer, setAnswer] = React.useState<string | number>('')
 
   function onAnswerDisplayClick(
@@ -39,32 +43,15 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
     return problem.answer === answer
   }
 
-  function animateAnswer(
-    currAnswer: string | number,
-    type: 'positive' | 'negative'
-  ) {
-    const answerEl = answerAnimationRef.current
-    const cursorEl = cursorRef.current
-    if (!answerEl || !cursorEl) return
+  function setNextProblem() {
+    const problems = problemsCache
+    setProblemsCache(problems)
+    const currProblem = problems.pop()
+    if (currProblem) setProblem(currProblem)
 
-    // if we are starting the animation, create a clone of the el in place of the original
-    answerEl.style.visibility = 'visible'
-    answerEl.style.right = `${cursorEl.offsetWidth}px`
-    answerEl.textContent =
-      typeof currAnswer === 'number' ? currAnswer.toString() : currAnswer
-
-    if (type === 'positive') {
-      // positive animation, rocket off out of control
-      setTimeout(() => {
-        answerEl.style.transform = 'scale(1.5)'
-      }, 500)
-    } else {
-      setTimeout(() => {
-        answerEl.style.transform = 'scale(1.5)'
-      }, 500)
-      // do negative animation, drop dead
+    if (problems.length < 4) {
+      fetcher.load('/math')
     }
-    console.log('answerEl', answerEl)
   }
 
   function submitAnswer(e: React.FormEvent<HTMLFormElement>) {
@@ -72,17 +59,37 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
 
     if (problemData && validateMathProblem(problemData, answer)) {
       setAnswer('')
-      animateAnswer(answer, 'positive')
-      const problems = problemsCache
-      setProblemsCache(problems)
-      setProblem(problems.pop())
-
-      if (problems.length < 4) {
-        fetcher.load('/math')
-      }
+      animateAnswer({
+        answer,
+        type: 'positive',
+        answerAnimationRef,
+        cursorWidth,
+      })
+      setNextProblem()
     } else {
-      setAnswer('')
-      animateAnswer(answer, 'negative')
+      if (!problemData) return
+      let currProblem = problemData
+
+      if (problemData?.answerAttempts < 4) {
+        currProblem = {
+          ...currProblem,
+          answerAttempts: problemData.answerAttempts + 1,
+        }
+        setProblem(currProblem)
+        animateAnswer({
+          answer,
+          cursorWidth,
+          answerRef,
+          answerAnimationRef,
+          problemAttempts: currProblem?.answerAttempts,
+          setAnswer,
+          type: 'negative',
+        })
+
+        if (currProblem.answerAttempts === 3) {
+          setNextProblem()
+        }
+      }
     }
   }
 
@@ -114,11 +121,19 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
   }, [])
 
   useEffect(() => {
+    if (cursorRef.current) {
+      requestAnimationFrame(() => {
+        setCursorWidth(cursorRef.current?.offsetWidth)
+      })
+    }
+  }, [cursorRef?.current?.offsetWidth])
+
+  useEffect(() => {
     if (!problemData && problemsCache.length === 10) {
       const problems = problemsCache
       const currProblem = problems.pop()
       setProblemsCache(problems)
-      setProblem(currProblem)
+      if (currProblem) setProblem({ ...(currProblem || {}), attempts: 0 })
     }
   }, [problemData, problemsCache])
 
@@ -133,8 +148,6 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
     }
   }, [problemsCache, fetcher.type, fetcher.data])
 
-  console.log('problemsCache length', problemsCache.length)
-
   return (
     <div className="flex w-1/4 flex-col text-[128px] xl:text-[180px]">
       <div className="ml-auto">{problemData?.problem.parts.num1}</div>
@@ -148,7 +161,9 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
         onClick={e => onAnswerDisplayClick(e)}
       >
         <span className="absolute top-0" ref={answerAnimationRef}></span>
-        <span>{answer}</span>
+        <span className="inline-block transition-colors" ref={answerRef}>
+          {answer}
+        </span>
         <span ref={cursorRef} className={classnames('cursor mb-[1.5rem]')}>
           |
         </span>
