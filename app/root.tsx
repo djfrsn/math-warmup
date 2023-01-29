@@ -9,8 +9,6 @@ import {
   ScrollRestoration,
 } from '@remix-run/react'
 
-// import 'velocity-animate/velocity.ui'
-
 import tailwindStylesheetUrl from './styles/tailwind.css'
 import stylesUrl from './styles/global.css'
 import { getUser } from './session.server'

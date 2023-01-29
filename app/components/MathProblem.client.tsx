@@ -2,14 +2,19 @@ import React, { useEffect } from 'react'
 import type { FetcherWithComponents } from '@remix-run/react'
 import { useFetcher } from '@remix-run/react'
 import classnames from 'classnames'
-import { motion, useMotionValue } from 'framer-motion'
+import { useTransform } from 'framer-motion'
+
+import { m, useMotionValue } from 'framer-motion'
 
 import type {
+  AnswerMotionValues,
   CursorWidth,
   MathProblem,
   MathProblems,
 } from '~/types/MathProblemTypes'
 import { animateAnswer } from '~/utils/animations'
+
+const maxAnswerAttempts = 4
 
 function validateMathProblem(problem: MathProblem, answer: number | string) {
   return problem.answer === answer
@@ -84,6 +89,7 @@ function submitAnswer({
   problemsCache,
   setProblem,
   setProblemsCache,
+  motionValues,
   fetcher,
   cursorWidth,
 }: {
@@ -97,6 +103,7 @@ function submitAnswer({
   setProblem: React.Dispatch<React.SetStateAction<MathProblem | undefined>>
   setProblemsCache: React.Dispatch<React.SetStateAction<MathProblems>>
   fetcher: FetcherWithComponents<any>
+  motionValues: AnswerMotionValues
   cursorWidth: CursorWidth
 }) {
   e.preventDefault()
@@ -110,6 +117,7 @@ function submitAnswer({
       type: 'positive',
       answerAnimationRef,
       cursorWidth,
+      motionValues,
     })
     setNextProblem({
       problemsCache,
@@ -121,7 +129,7 @@ function submitAnswer({
     if (!problemData) return
     let currProblem = problemData
 
-    if (problemData?.answerAttempts < 4) {
+    if (problemData?.answerAttempts < maxAnswerAttempts) {
       currProblem = {
         ...currProblem,
         answerAttempts: problemData.answerAttempts + 1,
@@ -134,10 +142,11 @@ function submitAnswer({
         answerAnimationRef,
         problemAttempts: currProblem?.answerAttempts,
         setAnswer,
+        motionValues,
         type: 'negative',
       })
 
-      if (currProblem.answerAttempts === 3) {
+      if (currProblem.answerAttempts === maxAnswerAttempts - 1) {
         setNextProblem({
           problemsCache,
           setProblem,
@@ -161,8 +170,7 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
   const answerAnimationRef = React.useRef<HTMLSpanElement>(null)
   const cursorRef = React.useRef<HTMLSpanElement>(null)
 
-  const answerAnimOpacity = useMotionValue(0)
-
+  const answerAnimOpacity = useMotionValue(1)
   // Animation Properties
   const [cursorWidth, setCursorWidth] = React.useState<CursorWidth>()
 
@@ -219,11 +227,11 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
         className=" relative w-full text-right"
         onClick={e => onAnswerDisplayClick(e, inputRef)}
       >
-        <motion.span
+        <m.span
           className="absolute top-0"
           ref={answerAnimationRef}
           style={{ opacity: answerAnimOpacity }}
-        ></motion.span>
+        ></m.span>
         <span className="inline-block transition-colors" ref={answerRef}>
           {answer}
         </span>
@@ -245,6 +253,7 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
             fetcher,
             answerAnimationRef,
             cursorWidth,
+            motionValues: { answerAnimOpacity },
           })
         }
         className="absolute top-[-999px]"

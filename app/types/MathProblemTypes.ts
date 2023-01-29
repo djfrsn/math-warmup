@@ -1,3 +1,5 @@
+import type { MotionValue } from 'framer-motion'
+
 export interface MathProblem {
   problem: {
     str: string
@@ -8,5 +10,9 @@ export interface MathProblem {
 }
 
 export type MathProblems = MathProblem[]
+
+export interface AnswerMotionValues {
+  answerAnimOpacity: MotionValue<number>
+}
 
 export type CursorWidth = number | undefined

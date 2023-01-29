@@ -1,4 +1,5 @@
-import type { CursorWidth } from '~/types/MathProblemTypes'
+import { animate } from 'framer-motion'
+import type { AnswerMotionValues, CursorWidth } from '~/types/MathProblemTypes'
 
 type SetAnswer = React.Dispatch<React.SetStateAction<string | number>>
 
@@ -21,6 +22,7 @@ export function negativeFeedbackAnimation({
   problemAttempts,
   cursorWidth,
   answer,
+  motionValues,
 }: {
   answerEl: HTMLSpanElement
   answerAnimationEl: HTMLSpanElement
@@ -28,6 +30,7 @@ export function negativeFeedbackAnimation({
   cursorWidth: number
   answer: number | string
   setAnswer: SetAnswer
+  motionValues: AnswerMotionValues
 }) {
   console.log(problemAttempts)
   if (answerEl) {
@@ -37,6 +40,14 @@ export function negativeFeedbackAnimation({
       // throw the answer down, make it flash red
       console.log('velocity ->')
       setAnswer('')
+      // motionValues.answerAnimOpacity.set(1)
+      animate(1, 0, {
+        duration: 2,
+        onUpdate: latest => {
+          console.log(latest)
+          motionValues.answerAnimOpacity.set(latest)
+        },
+      })
       // setNextProblem()
       // answerAnimationEl.style.transformOrigin = 'center center'
     } else {
@@ -72,6 +83,7 @@ export function animateAnswer({
   cursorWidth,
   setAnswer,
   type,
+  motionValues,
 }: {
   answerRef?: React.MutableRefObject<HTMLSpanElement | null>
   answerAnimationRef: React.MutableRefObject<HTMLSpanElement | null>
@@ -80,6 +92,7 @@ export function animateAnswer({
   problemAttempts?: number
   setAnswer?: SetAnswer
   type: 'positive' | 'negative'
+  motionValues: AnswerMotionValues
 }) {
   const answerAnimationEl = answerAnimationRef.current
   const answerEl = answerRef?.current
@@ -96,6 +109,7 @@ export function animateAnswer({
       cursorWidth,
       setAnswer,
       problemAttempts,
+      motionValues,
     })
   }
 }
