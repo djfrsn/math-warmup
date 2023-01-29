@@ -1,8 +1,10 @@
-import Velocity from 'velocity-animate'
-import 'velocity-animate/velocity.ui'
 import type { CursorWidth } from '~/types/MathProblemTypes'
 
 type SetAnswer = React.Dispatch<React.SetStateAction<string | number>>
+
+function rand(min: number, max: number) {
+  return Math.floor(Math.random() * (max + 1 - min) + min)
+}
 
 export function positiveFeedbackAnimation({
   answerAnimationEl,
@@ -36,7 +38,7 @@ export function negativeFeedbackAnimation({
       console.log('velocity ->')
       setAnswer('')
       // setNextProblem()
-      Velocity(answerEl, 'callout.flash')
+      // answerAnimationEl.style.transformOrigin = 'center center'
     } else {
       if (answerEl.classList.contains('shake'))
         answerEl.classList.remove('shake')
@@ -82,7 +84,6 @@ export function animateAnswer({
   const answerAnimationEl = answerAnimationRef.current
   const answerEl = answerRef?.current
   if (!answerEl || !answerAnimationEl || typeof cursorWidth !== 'number') return
-  // if we are starting the animation, create a clone of the el in place of the original
 
   if (type === 'positive') {
     cloneAnswer({ answerAnimationEl, cursorWidth, answer })

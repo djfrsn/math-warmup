@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react'
+import type { FetcherWithComponents } from '@remix-run/react'
 import { useFetcher } from '@remix-run/react'
 import classnames from 'classnames'
+import { motion, useMotionValue } from 'framer-motion'
 
 import type {
   CursorWidth,
@@ -8,6 +10,144 @@ import type {
   MathProblems,
 } from '~/types/MathProblemTypes'
 import { animateAnswer } from '~/utils/animations'
+
+function validateMathProblem(problem: MathProblem, answer: number | string) {
+  return problem.answer === answer
+}
+
+function onAnswerDisplayClick(
+  e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+  inputRef: React.RefObject<HTMLInputElement>
+) {
+  if (inputRef.current) {
+    inputRef.current.focus()
+  }
+}
+
+function setNextProblem({
+  problemsCache,
+  setProblem,
+  setProblemsCache,
+  fetcher,
+}: {
+  problemsCache: MathProblems
+  setProblem: React.Dispatch<React.SetStateAction<MathProblem | undefined>>
+  setProblemsCache: React.Dispatch<React.SetStateAction<MathProblems>>
+  fetcher: FetcherWithComponents<any>
+}) {
+  const problems = problemsCache
+  setProblemsCache(problems)
+  const currProblem = problems.pop()
+  if (currProblem) setProblem(currProblem)
+
+  if (problems.length < 4) {
+    fetcher.load('/math')
+  }
+}
+
+function _setAnswer({
+  val,
+  problemData,
+  setAnswer,
+}: {
+  val: string
+  problemData: MathProblem | undefined
+  setAnswer: React.Dispatch<React.SetStateAction<string | number>>
+}) {
+  const num = parseInt(val)
+
+  if (!isNaN(num)) {
+    const maxStrLen =
+      typeof problemData?.answer === 'number'
+        ? problemData?.answer.toString().length + 1
+        : Infinity
+    const handleStrOverflow = val.length > maxStrLen
+
+    if (handleStrOverflow) {
+      const newStr = val.slice(0, val.length - (val.length - maxStrLen) - 1)
+      setAnswer(newStr + val.slice(val.length - 1, val.length))
+    } else {
+      setAnswer(num)
+    }
+  } else if (val === '') {
+    setAnswer('')
+  }
+}
+
+function submitAnswer({
+  e,
+  answer,
+  answerRef,
+  answerAnimationRef,
+  setAnswer,
+  problemData,
+  problemsCache,
+  setProblem,
+  setProblemsCache,
+  fetcher,
+  cursorWidth,
+}: {
+  e: React.FormEvent<HTMLFormElement>
+  answer: number | string
+  answerRef: React.RefObject<HTMLSpanElement>
+  answerAnimationRef: React.RefObject<HTMLSpanElement>
+  setAnswer: React.Dispatch<React.SetStateAction<string | number>>
+  problemData: MathProblem | undefined
+  problemsCache: MathProblems
+  setProblem: React.Dispatch<React.SetStateAction<MathProblem | undefined>>
+  setProblemsCache: React.Dispatch<React.SetStateAction<MathProblems>>
+  fetcher: FetcherWithComponents<any>
+  cursorWidth: CursorWidth
+}) {
+  e.preventDefault()
+
+  if (!answer) return
+
+  if (problemData && validateMathProblem(problemData, answer)) {
+    setAnswer('')
+    animateAnswer({
+      answer,
+      type: 'positive',
+      answerAnimationRef,
+      cursorWidth,
+    })
+    setNextProblem({
+      problemsCache,
+      setProblem,
+      setProblemsCache,
+      fetcher,
+    })
+  } else {
+    if (!problemData) return
+    let currProblem = problemData
+
+    if (problemData?.answerAttempts < 4) {
+      currProblem = {
+        ...currProblem,
+        answerAttempts: problemData.answerAttempts + 1,
+      }
+      setProblem(currProblem)
+      animateAnswer({
+        answer,
+        cursorWidth,
+        answerRef,
+        answerAnimationRef,
+        problemAttempts: currProblem?.answerAttempts,
+        setAnswer,
+        type: 'negative',
+      })
+
+      if (currProblem.answerAttempts === 3) {
+        setNextProblem({
+          problemsCache,
+          setProblem,
+          setProblemsCache,
+          fetcher,
+        })
+      }
+    }
+  }
+}
 // ✅ hidden input for the answer
 // ✅ display the answer in a div
 // animate the positive/negative feedback element
@@ -21,6 +161,8 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
   const answerAnimationRef = React.useRef<HTMLSpanElement>(null)
   const cursorRef = React.useRef<HTMLSpanElement>(null)
 
+  const answerAnimOpacity = useMotionValue(0)
+
   // Animation Properties
   const [cursorWidth, setCursorWidth] = React.useState<CursorWidth>()
 
@@ -30,89 +172,6 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
   )
   const [problemData, setProblem] = React.useState<MathProblem | undefined>()
   const [answer, setAnswer] = React.useState<string | number>('')
-
-  function onAnswerDisplayClick(
-    e: React.MouseEvent<HTMLDivElement, MouseEvent>
-  ) {
-    if (inputRef.current) {
-      inputRef.current.focus()
-    }
-  }
-
-  function validateMathProblem(problem: MathProblem, answer: number | string) {
-    return problem.answer === answer
-  }
-
-  function setNextProblem() {
-    const problems = problemsCache
-    setProblemsCache(problems)
-    const currProblem = problems.pop()
-    if (currProblem) setProblem(currProblem)
-
-    if (problems.length < 4) {
-      fetcher.load('/math')
-    }
-  }
-
-  function submitAnswer(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-
-    if (problemData && validateMathProblem(problemData, answer)) {
-      setAnswer('')
-      animateAnswer({
-        answer,
-        type: 'positive',
-        answerAnimationRef,
-        cursorWidth,
-      })
-      setNextProblem()
-    } else {
-      if (!problemData) return
-      let currProblem = problemData
-
-      if (problemData?.answerAttempts < 4) {
-        currProblem = {
-          ...currProblem,
-          answerAttempts: problemData.answerAttempts + 1,
-        }
-        setProblem(currProblem)
-        animateAnswer({
-          answer,
-          cursorWidth,
-          answerRef,
-          answerAnimationRef,
-          problemAttempts: currProblem?.answerAttempts,
-          setAnswer,
-          type: 'negative',
-        })
-
-        if (currProblem.answerAttempts === 3) {
-          setNextProblem()
-        }
-      }
-    }
-  }
-
-  function _setAnswer(val: string) {
-    const num = parseInt(val)
-
-    if (!isNaN(num)) {
-      const maxStrLen =
-        typeof problemData?.answer === 'number'
-          ? problemData?.answer.toString().length + 1
-          : Infinity
-      const handleStrOverflow = val.length > maxStrLen
-
-      if (handleStrOverflow) {
-        const newStr = val.slice(0, val.length - (val.length - maxStrLen) - 1)
-        setAnswer(newStr + val.slice(val.length - 1, val.length))
-      } else {
-        setAnswer(num)
-      }
-    } else if (val === '') {
-      setAnswer('')
-    }
-  }
 
   useEffect(() => {
     if (inputRef.current) {
@@ -133,7 +192,7 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
       const problems = problemsCache
       const currProblem = problems.pop()
       setProblemsCache(problems)
-      if (currProblem) setProblem({ ...(currProblem || {}), attempts: 0 })
+      if (currProblem) setProblem({ ...(currProblem || {}), answerAttempts: 0 })
     }
   }, [problemData, problemsCache])
 
@@ -158,9 +217,13 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
       <hr className="h-[5px] w-full bg-black transition-all" />
       <div
         className=" relative w-full text-right"
-        onClick={e => onAnswerDisplayClick(e)}
+        onClick={e => onAnswerDisplayClick(e, inputRef)}
       >
-        <span className="absolute top-0" ref={answerAnimationRef}></span>
+        <motion.span
+          className="absolute top-0"
+          ref={answerAnimationRef}
+          style={{ opacity: answerAnimOpacity }}
+        ></motion.span>
         <span className="inline-block transition-colors" ref={answerRef}>
           {answer}
         </span>
@@ -168,13 +231,32 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
           |
         </span>
       </div>
-      <form onSubmit={e => submitAnswer(e)} className="absolute top-[-999px]">
+      <form
+        onSubmit={e =>
+          submitAnswer({
+            e,
+            answer,
+            answerRef,
+            setAnswer,
+            problemData,
+            problemsCache,
+            setProblem,
+            setProblemsCache,
+            fetcher,
+            answerAnimationRef,
+            cursorWidth,
+          })
+        }
+        className="absolute top-[-999px]"
+      >
         <input
           ref={inputRef}
           className="col-span-3 rounded p-2 text-5xl"
           type="number"
           value={answer}
-          onChange={e => _setAnswer(e.target.value)}
+          onChange={e =>
+            _setAnswer({ val: e.target.value, problemData, setAnswer })
+          }
         />
       </form>
     </div>
