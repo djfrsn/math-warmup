@@ -7,6 +7,8 @@ function rand(min: number, max: number) {
   return Math.floor(Math.random() * (max + 1 - min) + min)
 }
 
+// Reference animation:  https://codepen.io/sol0mka/pen/eYgydO
+
 export function positiveFeedbackAnimation({
   answerAnimationEl,
 }: {
@@ -41,11 +43,43 @@ export function negativeFeedbackAnimation({
       console.log('velocity ->')
       setAnswer('')
       // motionValues.answerAnimOpacity.set(1)
+      // TODO: do this animation for each of the numbers in the answer
+      const yTime = 1 + rand(1, 2)
       animate(1, 0, {
         duration: 2,
         onUpdate: latest => {
-          console.log(latest)
           motionValues.answerAnimOpacity.set(latest)
+        },
+      })
+      animate(1, 0, {
+        duration: 4,
+        onUpdate: latest => {
+          motionValues.answerAnimScale.set(latest)
+        },
+      })
+      animate(0, 100, {
+        duration: 0.1,
+        onUpdate: latest => {
+          motionValues.answerAnimRotateZ.set(latest)
+        },
+      })
+      animate(0, 280 + rand(0, 100), {
+        duration: yTime * 0.5,
+        delay: 0.1,
+        onUpdate: latest => {
+          motionValues.answerAnimRotateZ.set(latest)
+        },
+      })
+      animate(0, 750 + rand(250, 750), {
+        duration: 1,
+        onUpdate: latest => {
+          motionValues.answerAnimX.set(latest * -1)
+        },
+      })
+      animate(0, 1000 + rand(500, 750), {
+        duration: yTime,
+        onUpdate: latest => {
+          motionValues.answerAnimY.set(latest)
         },
       })
       // setNextProblem()

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import type { FetcherWithComponents } from '@remix-run/react'
 import { useFetcher } from '@remix-run/react'
 import classnames from 'classnames'
+import type { MotionStyle } from 'framer-motion'
 import { useTransform } from 'framer-motion'
 
 import { m, useMotionValue } from 'framer-motion'
@@ -170,7 +171,25 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
   const answerAnimationRef = React.useRef<HTMLSpanElement>(null)
   const cursorRef = React.useRef<HTMLSpanElement>(null)
 
+  const answerAnimScale = useMotionValue(1)
+  const answerAnimRotateZ = useMotionValue(0)
+  const answerAnimX = useMotionValue(0)
+  const answerAnimY = useMotionValue(0)
   const answerAnimOpacity = useMotionValue(1)
+  const answerAnimationStyle: MotionStyle = {
+    opacity: answerAnimOpacity,
+    x: answerAnimX,
+    y: answerAnimY,
+    scale: answerAnimScale,
+    rotateZ: answerAnimRotateZ,
+  }
+  const motionValues = {
+    answerAnimOpacity,
+    answerAnimX,
+    answerAnimY,
+    answerAnimScale,
+    answerAnimRotateZ,
+  }
   // Animation Properties
   const [cursorWidth, setCursorWidth] = React.useState<CursorWidth>()
 
@@ -230,7 +249,7 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
         <m.span
           className="absolute top-0"
           ref={answerAnimationRef}
-          style={{ opacity: answerAnimOpacity }}
+          style={answerAnimationStyle}
         ></m.span>
         <span className="inline-block transition-colors" ref={answerRef}>
           {answer}
@@ -253,7 +272,7 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
             fetcher,
             answerAnimationRef,
             cursorWidth,
-            motionValues: { answerAnimOpacity },
+            motionValues,
           })
         }
         className="absolute top-[-999px]"

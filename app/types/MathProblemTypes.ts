@@ -12,6 +12,10 @@ export interface MathProblem {
 export type MathProblems = MathProblem[]
 
 export interface AnswerMotionValues {
+  answerAnimX: MotionValue<number>
+  answerAnimY: MotionValue<number>
+  answerAnimScale: MotionValue<number>
+  answerAnimRotateZ: MotionValue<number>
   answerAnimOpacity: MotionValue<number>
 }
 
