@@ -1,5 +1,6 @@
 import { animate } from 'framer-motion'
-import type { AnswerMotionValues, CursorWidth } from '~/types/MathProblemTypes'
+import type { AnswerMotionValues } from '~/types/MathProblemTypes'
+import { AnswerAnimationDelayEnum, CursorWidth } from '~/types/MathProblemTypes'
 
 type SetAnswer = React.Dispatch<React.SetStateAction<string | number>>
 
@@ -32,7 +33,7 @@ export function negativeFeedbackAnimation({
   cursorWidth: number
   answer: number | string
   setAnswer: SetAnswer
-  motionValues: AnswerMotionValues
+  motionValues: Record<string, AnswerMotionValues>
 }) {
   console.log(problemAttempts)
   if (answerEl) {
@@ -41,50 +42,65 @@ export function negativeFeedbackAnimation({
       cloneAnswer({ answerAnimationEl, cursorWidth, answer })
       // throw the answer down, make it flash red
       console.log('velocity ->')
-      setAnswer('')
-      // motionValues.answerAnimOpacity.set(1)
       // TODO: do this animation for each of the numbers in the answer
-      const yTime = 1 + rand(1, 2)
-      animate(1, 0, {
-        duration: 2,
-        onUpdate: latest => {
-          motionValues.answerAnimOpacity.set(latest)
-        },
+      Object.keys(motionValues).forEach(motionValueKey => {
+        const motionValue = motionValues[motionValueKey]
+        const xDuration = 0.75
+        // NOTE: a longer yDuration makes the answer fall slower
+        const yDuration = xDuration + rand(1, 2)
+        // NOTE: a lower gravityPull makes the answer fall faster
+        const gravityPull = Math.random() * 0.5 + 0.5
+        animate('#fff', '#FF0000', {
+          duration: 0.1,
+          onUpdate: latest => motionValue.color.set(latest),
+        })
+        const throwDelay = AnswerAnimationDelayEnum.Throw
+        animate(1, 0, {
+          duration: 2,
+          delay: throwDelay,
+          onUpdate: latest => {
+            motionValue.opacity.set(latest)
+          },
+        })
+        animate(1, 0, {
+          duration: 4,
+          delay: throwDelay,
+          onUpdate: latest => {
+            motionValue.scale.set(latest)
+          },
+        })
+        const initialRotateDuration = 0.1
+        animate(0, 280, {
+          duration: initialRotateDuration,
+          delay: throwDelay,
+          onUpdate: latest => {
+            motionValue.rotateZ.set(latest)
+          },
+        })
+        animate(0, 600 + rand(50, 100), {
+          duration: yDuration * 0.5,
+          delay: throwDelay + initialRotateDuration,
+          onUpdate: latest => {
+            motionValue.rotateZ.set(latest)
+          },
+        })
+        animate(0, 1000 + rand(750, 1000), {
+          duration: xDuration,
+          delay: throwDelay,
+          onUpdate: latest => {
+            motionValue.x.set(latest * -1)
+          },
+        })
+        animate(0, 1000 + rand(750, 1000), {
+          duration: yDuration * gravityPull,
+          delay: throwDelay,
+          onUpdate: latest => {
+            motionValue.y.set(latest * 1.1)
+          },
+        })
       })
-      animate(1, 0, {
-        duration: 4,
-        onUpdate: latest => {
-          motionValues.answerAnimScale.set(latest)
-        },
-      })
-      animate(0, 100, {
-        duration: 0.1,
-        onUpdate: latest => {
-          motionValues.answerAnimRotateZ.set(latest)
-        },
-      })
-      animate(0, 280 + rand(0, 100), {
-        duration: yTime * 0.5,
-        delay: 0.1,
-        onUpdate: latest => {
-          motionValues.answerAnimRotateZ.set(latest)
-        },
-      })
-      animate(0, 750 + rand(250, 750), {
-        duration: 1,
-        onUpdate: latest => {
-          motionValues.answerAnimX.set(latest * -1)
-        },
-      })
-      animate(0, 1000 + rand(500, 750), {
-        duration: yTime,
-        onUpdate: latest => {
-          motionValues.answerAnimY.set(latest)
-        },
-      })
-      // setNextProblem()
-      // answerAnimationEl.style.transformOrigin = 'center center'
     } else {
+      console.log('answerEl', answerEl)
       if (answerEl.classList.contains('shake'))
         answerEl.classList.remove('shake')
       requestAnimationFrame(() => {
@@ -104,9 +120,9 @@ function cloneAnswer({
   answer: number | string
 }) {
   answerAnimationEl.style.visibility = 'visible'
-  answerAnimationEl.style.right = `${cursorWidth}px`
-  answerAnimationEl.textContent =
-    typeof answer === 'number' ? answer.toString() : answer
+  // answerAnimationEl.style.right = `${cursorWidth}px`
+  // answerAnimationEl.textContent =
+  //   typeof answer === 'number' ? answer.toString() : answer
 }
 
 export function animateAnswer({
@@ -126,7 +142,7 @@ export function animateAnswer({
   problemAttempts?: number
   setAnswer?: SetAnswer
   type: 'positive' | 'negative'
-  motionValues: AnswerMotionValues
+  motionValues: Record<string, AnswerMotionValues>
 }) {
   const answerAnimationEl = answerAnimationRef.current
   const answerEl = answerRef?.current

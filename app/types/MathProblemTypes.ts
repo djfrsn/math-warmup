@@ -12,11 +12,16 @@ export interface MathProblem {
 export type MathProblems = MathProblem[]
 
 export interface AnswerMotionValues {
-  answerAnimX: MotionValue<number>
-  answerAnimY: MotionValue<number>
-  answerAnimScale: MotionValue<number>
-  answerAnimRotateZ: MotionValue<number>
-  answerAnimOpacity: MotionValue<number>
+  x: MotionValue<number>
+  y: MotionValue<number>
+  color: MotionValue<string>
+  scale: MotionValue<number>
+  rotateZ: MotionValue<number>
+  opacity: MotionValue<number>
+}
+
+export enum AnswerAnimationDelayEnum {
+  Throw = 0.5,
 }
 
 export type CursorWidth = number | undefined

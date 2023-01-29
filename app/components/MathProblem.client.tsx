@@ -3,7 +3,6 @@ import type { FetcherWithComponents } from '@remix-run/react'
 import { useFetcher } from '@remix-run/react'
 import classnames from 'classnames'
 import type { MotionStyle } from 'framer-motion'
-import { useTransform } from 'framer-motion'
 
 import { m, useMotionValue } from 'framer-motion'
 
@@ -13,6 +12,7 @@ import type {
   MathProblem,
   MathProblems,
 } from '~/types/MathProblemTypes'
+import { AnswerAnimationDelayEnum } from '~/types/MathProblemTypes'
 import { animateAnswer } from '~/utils/animations'
 
 const maxAnswerAttempts = 4
@@ -86,11 +86,13 @@ function submitAnswer({
   answerRef,
   answerAnimationRef,
   setAnswer,
+  setPrevAnswer,
+  answerAnimMotionValues,
+  setAnswerAnimMotionValues,
   problemData,
   problemsCache,
   setProblem,
   setProblemsCache,
-  motionValues,
   fetcher,
   cursorWidth,
 }: {
@@ -98,13 +100,15 @@ function submitAnswer({
   answer: number | string
   answerRef: React.RefObject<HTMLSpanElement>
   answerAnimationRef: React.RefObject<HTMLSpanElement>
+  answerAnimMotionValues: Record<string, AnswerMotionValues>
+  setAnswerAnimMotionValues: React.Dispatch<Record<string, AnswerMotionValues>>
+  setPrevAnswer: React.Dispatch<React.SetStateAction<string | number>>
   setAnswer: React.Dispatch<React.SetStateAction<string | number>>
   problemData: MathProblem | undefined
   problemsCache: MathProblems
   setProblem: React.Dispatch<React.SetStateAction<MathProblem | undefined>>
   setProblemsCache: React.Dispatch<React.SetStateAction<MathProblems>>
   fetcher: FetcherWithComponents<any>
-  motionValues: AnswerMotionValues
   cursorWidth: CursorWidth
 }) {
   e.preventDefault()
@@ -113,13 +117,14 @@ function submitAnswer({
 
   if (problemData && validateMathProblem(problemData, answer)) {
     setAnswer('')
-    animateAnswer({
-      answer,
-      type: 'positive',
-      answerAnimationRef,
-      cursorWidth,
-      motionValues,
-    })
+    if (answerAnimMotionValues)
+      animateAnswer({
+        answer,
+        type: 'positive',
+        answerAnimationRef,
+        cursorWidth,
+        motionValues: answerAnimMotionValues,
+      })
     setNextProblem({
       problemsCache,
       setProblem,
@@ -136,24 +141,29 @@ function submitAnswer({
         answerAttempts: problemData.answerAttempts + 1,
       }
       setProblem(currProblem)
-      animateAnswer({
-        answer,
-        cursorWidth,
-        answerRef,
-        answerAnimationRef,
-        problemAttempts: currProblem?.answerAttempts,
-        setAnswer,
-        motionValues,
-        type: 'negative',
-      })
+      if (answerAnimMotionValues)
+        animateAnswer({
+          answer,
+          cursorWidth,
+          answerRef,
+          answerAnimationRef,
+          problemAttempts: currProblem?.answerAttempts,
+          setAnswer,
+          motionValues: answerAnimMotionValues,
+          type: 'negative',
+        })
 
       if (currProblem.answerAttempts === maxAnswerAttempts - 1) {
-        setNextProblem({
-          problemsCache,
-          setProblem,
-          setProblemsCache,
-          fetcher,
-        })
+        setPrevAnswer(currProblem.answer)
+        setAnswer('')
+        setTimeout(() => {
+          setNextProblem({
+            problemsCache,
+            setProblem,
+            setProblemsCache,
+            fetcher,
+          })
+        }, AnswerAnimationDelayEnum.Throw * 1000)
       }
     }
   }
@@ -163,6 +173,56 @@ function submitAnswer({
 // animate the positive/negative feedback element
 // animate change of number
 
+function AnswerAnimLetter({
+  charKey,
+  char,
+  answerAnimMotionValues,
+  setAnswerAnimMotionValues,
+}: {
+  charKey: string
+  char: number | string
+  setAnswerAnimMotionValues: React.Dispatch<Record<string, AnswerMotionValues>>
+  answerAnimMotionValues: Record<string, AnswerMotionValues>
+}) {
+  const answerAnimColor = useMotionValue('#000')
+  const answerAnimScale = useMotionValue(1)
+  const answerAnimRotateZ = useMotionValue(0)
+  const answerAnimX = useMotionValue(0)
+  const answerAnimY = useMotionValue(0)
+  const answerAnimOpacity = useMotionValue(1)
+
+  useEffect(() => {
+    if (answerAnimMotionValues[charKey]) return
+    setAnswerAnimMotionValues({
+      ...answerAnimMotionValues,
+      [charKey]: {
+        color: answerAnimColor,
+        opacity: answerAnimOpacity,
+        x: answerAnimX,
+        y: answerAnimY,
+        scale: answerAnimScale,
+        rotateZ: answerAnimRotateZ,
+      },
+    })
+  }, [
+    charKey,
+    answerAnimMotionValues,
+    setAnswerAnimMotionValues,
+    answerAnimColor,
+    answerAnimOpacity,
+    answerAnimX,
+    answerAnimY,
+    answerAnimScale,
+    answerAnimRotateZ,
+  ])
+
+  return (
+    <m.span className="relative" style={answerAnimMotionValues[charKey]}>
+      {char}
+    </m.span>
+  )
+}
+
 function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
   const fetcher = useFetcher()
 
@@ -171,33 +231,18 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
   const answerAnimationRef = React.useRef<HTMLSpanElement>(null)
   const cursorRef = React.useRef<HTMLSpanElement>(null)
 
-  const answerAnimScale = useMotionValue(1)
-  const answerAnimRotateZ = useMotionValue(0)
-  const answerAnimX = useMotionValue(0)
-  const answerAnimY = useMotionValue(0)
-  const answerAnimOpacity = useMotionValue(1)
-  const answerAnimationStyle: MotionStyle = {
-    opacity: answerAnimOpacity,
-    x: answerAnimX,
-    y: answerAnimY,
-    scale: answerAnimScale,
-    rotateZ: answerAnimRotateZ,
-  }
-  const motionValues = {
-    answerAnimOpacity,
-    answerAnimX,
-    answerAnimY,
-    answerAnimScale,
-    answerAnimRotateZ,
-  }
   // Animation Properties
   const [cursorWidth, setCursorWidth] = React.useState<CursorWidth>()
+  const [answerAnimMotionValues, setAnswerAnimMotionValues] = React.useState<
+    Record<string, AnswerMotionValues>
+  >({})
 
   // App State
   const [problemsCache, setProblemsCache] = React.useState<MathProblems>(
     data.mathProblems
   )
   const [problemData, setProblem] = React.useState<MathProblem | undefined>()
+  const [prevAnswer, setPrevAnswer] = React.useState<string | number>('')
   const [answer, setAnswer] = React.useState<string | number>('')
 
   useEffect(() => {
@@ -246,11 +291,20 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
         className=" relative w-full text-right"
         onClick={e => onAnswerDisplayClick(e, inputRef)}
       >
-        <m.span
-          className="absolute top-0"
-          ref={answerAnimationRef}
-          style={answerAnimationStyle}
-        ></m.span>
+        <span className="relative top-0" ref={answerAnimationRef}>
+          {prevAnswer
+            .toString()
+            .split('')
+            .map((char, i) => (
+              <AnswerAnimLetter
+                answerAnimMotionValues={answerAnimMotionValues}
+                setAnswerAnimMotionValues={setAnswerAnimMotionValues}
+                char={char}
+                charKey={`${i}`}
+                key={i}
+              />
+            ))}
+        </span>
         <span className="inline-block transition-colors" ref={answerRef}>
           {answer}
         </span>
@@ -265,6 +319,9 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
             answer,
             answerRef,
             setAnswer,
+            setPrevAnswer,
+            answerAnimMotionValues,
+            setAnswerAnimMotionValues,
             problemData,
             problemsCache,
             setProblem,
@@ -272,7 +329,6 @@ function MathProblemUI({ data }: { data: { mathProblems: MathProblems } }) {
             fetcher,
             answerAnimationRef,
             cursorWidth,
-            motionValues,
           })
         }
         className="absolute top-[-999px]"
