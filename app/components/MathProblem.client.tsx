@@ -216,8 +216,10 @@ function AnswerAnimLetter({
     answerAnimRotateZ,
   ])
 
+  console.log('answerAnimMotionValues', answerAnimMotionValues)
+
   return (
-    <m.span className="relative" style={answerAnimMotionValues[charKey]}>
+    <m.span className="absolute" style={answerAnimMotionValues[charKey]}>
       {char}
     </m.span>
   )

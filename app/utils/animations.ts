@@ -43,8 +43,10 @@ export function negativeFeedbackAnimation({
       // throw the answer down, make it flash red
       console.log('velocity ->')
       // TODO: do this animation for each of the numbers in the answer
-      Object.keys(motionValues).forEach(motionValueKey => {
+      Object.keys(motionValues).forEach((motionValueKey, i) => {
         const motionValue = motionValues[motionValueKey]
+
+        console.log('motionValueKey', motionValueKey)
         const xDuration = 0.75
         // NOTE: a longer yDuration makes the answer fall slower
         const yDuration = xDuration + rand(1, 2)
@@ -84,7 +86,8 @@ export function negativeFeedbackAnimation({
             motionValue.rotateZ.set(latest)
           },
         })
-        animate(0, 1000 + rand(750, 1000), {
+        // TODO: correctly calcualte starting distance based on letter width
+        animate(100 + i * 100, 500 + rand(750, 1000), {
           duration: xDuration,
           delay: throwDelay,
           onUpdate: latest => {
